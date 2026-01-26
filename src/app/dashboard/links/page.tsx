@@ -327,13 +327,13 @@ function LinksContent() {
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-[#00C853]">
-                    {variants.filter(v => v.is_active).length}
+                    {variants.filter(v => v.enabled).length}
                   </p>
                   <p className="text-xs text-[#9A9A9A]">Active Links</p>
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-yellow-400">
-                    {variants.filter(v => !v.is_active).length}
+                    {variants.filter(v => !v.enabled).length}
                   </p>
                   <p className="text-xs text-[#9A9A9A]">Inactive Links</p>
                 </div>
