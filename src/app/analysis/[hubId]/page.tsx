@@ -504,7 +504,7 @@ export default function AnalysisPage() {
                                                     cx="50%"
                                                     cy="50%"
                                                     outerRadius={80}
-                                                    label={({ type, percentage }) => `${type}: ${percentage}%`}
+                                                    label={({ payload }: any) => `${payload.type}: ${payload.percentage}%`}
                                                 >
                                                     {segments.data.devices.map((_, index) => (
                                                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
