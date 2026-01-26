@@ -7,14 +7,14 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { LinkHub, Variant, VariantStats } from '@/types';
-import { 
-  getHubs, 
-  createHub, 
-  getVariants, 
+import {
+  getHubs,
+  createHub,
+  getVariants,
   createVariant,
   deleteVariant,
   getHubStats,
-  ApiError 
+  ApiError
 } from '@/lib/api-client';
 import { useAuth } from '@/contexts/auth-context';
 import ProtectedRoute from '@/components/ProtectedRoute';
@@ -33,26 +33,26 @@ export default function LinksPage() {
 
 function LinksContent() {
   const { user, logout } = useAuth();
-  
+
   // Hub state
   const [hubs, setHubs] = useState<LinkHub[]>([]);
   const [selectedHub, setSelectedHub] = useState<LinkHub | null>(null);
   const [isLoadingHubs, setIsLoadingHubs] = useState(true);
   const [showCreateHub, setShowCreateHub] = useState(false);
-  
+
   // Variant state
   const [variants, setVariants] = useState<Variant[]>([]);
   const [selectedVariant, setSelectedVariant] = useState<Variant | null>(null);
   const [isLoadingVariants, setIsLoadingVariants] = useState(false);
   const [isAddingVariant, setIsAddingVariant] = useState(false);
-  
+
   // Stats state
   const [variantStats, setVariantStats] = useState<VariantStats[]>([]);
-  
+
   // UI state
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  
+
   const hasFetched = useRef(false);
 
   // Fetch hubs on mount
@@ -61,7 +61,7 @@ function LinksContent() {
     try {
       const hubList = await getHubs();
       setHubs(hubList);
-      
+
       // Auto-select first hub if available
       if (hubList.length > 0 && !selectedHub) {
         setSelectedHub(hubList[0]);
@@ -80,7 +80,7 @@ function LinksContent() {
     try {
       const variantList = await getVariants(hubId);
       setVariants(variantList);
-      
+
       // Also fetch stats
       const hubStats = await getHubStats(hubId);
       if (hubStats?.variants) {
@@ -118,7 +118,7 @@ function LinksContent() {
   // Variant handlers
   const handleAddVariant = async (input: Parameters<typeof createVariant>[1]) => {
     if (!selectedHub) return;
-    
+
     try {
       const newVariant = await createVariant(selectedHub.hub_id, input);
       setVariants([...variants, newVariant]);
@@ -132,7 +132,7 @@ function LinksContent() {
 
   const handleDeleteVariant = async (variantId: string) => {
     if (!selectedHub || !confirm('Delete this link variant?')) return;
-    
+
     try {
       await deleteVariant(selectedHub.hub_id, variantId);
       setVariants(variants.filter(v => v.variant_id !== variantId));
@@ -145,23 +145,22 @@ function LinksContent() {
   };
 
   const handleVariantUpdate = (updatedVariant: Variant) => {
-    setVariants(variants.map(v => 
+    setVariants(variants.map(v =>
       v.variant_id === updatedVariant.variant_id ? updatedVariant : v
     ));
     setSelectedVariant(updatedVariant);
   };
 
   // Filter variants by search query
-  const filteredVariants = variants.filter(v => 
+  const filteredVariants = variants.filter(v =>
     v.variant_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    v.url.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    v.title?.toLowerCase().includes(searchQuery.toLowerCase())
+    v.target_url.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
     <div className="min-h-screen page-bg">
       <div className="max-w-7xl mx-auto p-6 lg:p-8">
-        
+
         {/* Header */}
         <header className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-4">
@@ -177,7 +176,7 @@ function LinksContent() {
               isLoading={isLoadingHubs}
             />
           </div>
-          
+
           <div className="flex items-center gap-4">
             {selectedHub && (
               <code className="text-[#00C853] bg-[#00C853]/10 px-3 py-2 rounded-lg border border-[#00C853]/20 text-sm">
@@ -263,7 +262,7 @@ function LinksContent() {
                   isLoading={isLoadingVariants}
                   stats={variantStats}
                 />
-                
+
                 {!isLoadingVariants && filteredVariants.length === 0 && (
                   <div className="bg-[#111] rounded-xl border border-[#222] p-8 text-center">
                     <div className="text-5xl mb-4 opacity-30">🔗</div>
@@ -271,7 +270,7 @@ function LinksContent() {
                       {searchQuery ? 'No links found' : 'No links yet'}
                     </h3>
                     <p className="text-[#9A9A9A] text-sm mb-4">
-                      {searchQuery 
+                      {searchQuery
                         ? 'Try a different search term'
                         : 'Add your first link to get started'
                       }
