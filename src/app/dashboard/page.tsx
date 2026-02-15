@@ -8,13 +8,15 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import type { LinkHub, Variant, HubStats } from '@/types';
-import { getHubs, createHub, getVariants, getHubStats } from '@/lib/api-client';
+import { getHubs, createHub, updateHub, getVariants, getHubStats } from '@/lib/api-client';
 import { useAuth } from '@/contexts/auth-context';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import HubSelector from '@/components/HubSelector';
 import CreateHubModal from '@/components/CreateHubModal';
 import AnalyticsPanel from '@/components/AnalyticsPanel';
+import EditHubModal from '@/components/EditHubModal';
 import { OnboardingModal } from '@/components/SettingsPanel';
+import { LinkIcon, GearIcon, WrenchIcon, ChartIcon, ClockIcon, GlobeIcon, DollarIcon, EditIcon } from '@/components/ui/Icons';
 
 export default function DashboardPage() {
   return (
@@ -32,6 +34,7 @@ function DashboardContent() {
   const [selectedHub, setSelectedHub] = useState<LinkHub | null>(null);
   const [isLoadingHubs, setIsLoadingHubs] = useState(true);
   const [showCreateHub, setShowCreateHub] = useState(false);
+  const [showEditHub, setShowEditHub] = useState(false);
 
   // Variant and Stats state
   const [variants, setVariants] = useState<Variant[]>([]);
@@ -101,41 +104,83 @@ function DashboardContent() {
     setSelectedHub(newHub);
   };
 
+  const handleUpdateHub = async (hubId: string, input: Parameters<typeof updateHub>[1]) => {
+    const updatedHub = await updateHub(hubId, input);
+    setHubs(hubs.map(h => h.hub_id === hubId ? updatedHub : h));
+    setSelectedHub(updatedHub);
+  };
+
   return (
     <div className="min-h-screen page-bg">
+      {/* Top Navigation Bar */}
+      <nav
+        className="sticky top-0 z-50 backdrop-blur-xl"
+        style={{ background: 'rgba(0,0,0,0.7)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}
+      >
+        <div className="max-w-7xl mx-auto px-6 lg:px-8 h-16 flex items-center justify-between">
+          {/* Brand */}
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'rgba(0,200,83,0.1)', border: '1px solid rgba(0,200,83,0.15)' }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00C853" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+              </svg>
+            </div>
+            <span className="font-bold text-white text-base tracking-tight">Smart Link Hub</span>
+          </div>
+
+          {/* User section */}
+          <div className="flex items-center gap-3">
+            <div
+              className="flex items-center gap-2.5 px-3.5 py-2 rounded-xl"
+              style={{ background: 'rgba(17,17,17,0.8)', border: '1px solid rgba(255,255,255,0.06)' }}
+            >
+              <div
+                className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold"
+                style={{ background: 'linear-gradient(135deg, rgba(0,200,83,0.2), rgba(0,200,83,0.05))', color: '#00C853' }}
+              >
+                {user?.name?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || 'U'}
+              </div>
+              <span className="text-sm text-[#aaa] hidden sm:inline max-w-[180px] truncate">{user?.email}</span>
+            </div>
+            <button
+              onClick={logout}
+              className="text-sm px-3.5 py-2 rounded-xl text-[#888] hover:text-red-400 hover:bg-red-500/10 transition-all"
+            >
+              Logout
+            </button>
+          </div>
+        </div>
+      </nav>
+
       <div className="max-w-7xl mx-auto p-6 lg:p-8">
 
-        {/* Header */}
-        <header className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-4">
-            <HubSelector
-              hubs={hubs}
-              selectedHub={selectedHub}
-              onSelect={setSelectedHub}
-              onCreateNew={() => setShowCreateHub(true)}
-              isLoading={isLoadingHubs}
-            />
-          </div>
+        {/* Hub Toolbar */}
+        <header className="flex flex-wrap items-center justify-between gap-4 mb-8">
+          <HubSelector
+            hubs={hubs}
+            selectedHub={selectedHub}
+            onSelect={setSelectedHub}
+            onCreateNew={() => setShowCreateHub(true)}
+            isLoading={isLoadingHubs}
+          />
 
-          <div className="flex items-center gap-4">
-            {selectedHub && (
+          {selectedHub && (
+            <div className="flex items-center gap-2">
               <button
-                onClick={() => window.open(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/${selectedHub.slug}/go`, '_blank')}
-                className="btn btn-secondary text-sm py-2 px-4"
+                onClick={() => setShowEditHub(true)}
+                className="text-sm py-2 px-4 rounded-lg border border-[#333] text-[#ccc] bg-transparent transition-all duration-200 ease-out hover:border-[#00C853]/50 hover:bg-[#0a0a0a] hover:text-white hover:scale-[1.02] active:scale-[0.97] flex items-center gap-1.5 cursor-pointer"
               >
-                View Live →
+                <EditIcon size={14} /> Edit Hub
               </button>
-            )}
-            <div className="flex items-center gap-2 ml-4 border-l pl-4" style={{ borderColor: 'var(--border-secondary)' }}>
-              <span className="text-sm" style={{ color: 'var(--foreground-secondary)' }}>{user?.email}</span>
               <button
-                onClick={logout}
-                className="text-red-400 hover:text-red-300 text-sm"
+                onClick={() => window.open(`/${selectedHub.slug}`, '_blank')}
+                className="text-sm py-2 px-4 rounded-lg bg-[#00C853]/10 text-[#00C853] border border-[#00C853]/25 transition-all duration-200 ease-out hover:bg-[#00C853]/20 hover:border-[#00C853]/50 hover:shadow-[0_0_15px_rgba(0,200,83,0.2)] hover:scale-[1.02] active:scale-[0.97] flex items-center gap-1.5 cursor-pointer"
               >
-                Logout
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg>
+                View Live
               </button>
             </div>
-          </div>
+          )}
         </header>
 
         {/* Error Display */}
@@ -149,8 +194,8 @@ function DashboardContent() {
         {/* No Hub State */}
         {!isLoadingHubs && hubs.length === 0 && (
           <div className="text-center py-20">
-            <div className="w-20 h-20 bg-[#111] rounded-2xl flex items-center justify-center mx-auto mb-6">
-              <span className="text-4xl">🔗</span>
+            <div className="w-20 h-20 bg-[#111] rounded-2xl flex items-center justify-center mx-auto mb-6 border border-[#333]">
+              <LinkIcon size={36} color="#555" />
             </div>
             <h2 className="text-2xl font-bold text-white mb-2">Create Your First Hub</h2>
             <p className="text-[#9A9A9A] mb-6 max-w-md mx-auto">
@@ -172,127 +217,134 @@ function DashboardContent() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
               <Link
                 href="/dashboard/links"
-                className="bg-[#111] rounded-xl border border-[#222] p-6 hover:border-[#00C853]/50 transition-all group"
+                className="group rounded-2xl p-6 transition-all duration-300 hover:translate-y-[-2px]"
+                style={{ background: 'linear-gradient(135deg, rgba(17,17,17,0.8), rgba(10,10,10,0.9))', border: '1px solid rgba(255,255,255,0.06)' }}
               >
                 <div className="flex items-center gap-4">
-                  <div className="text-4xl">🔗</div>
+                  <div className="w-11 h-11 rounded-xl flex items-center justify-center" style={{ background: 'rgba(0,200,83,0.08)', border: '1px solid rgba(0,200,83,0.12)' }}><LinkIcon size={22} color="#00C853" /></div>
                   <div>
                     <h3 className="text-lg font-bold text-white group-hover:text-[#00C853] transition-colors">
                       Manage Links
                     </h3>
-                    <p className="text-[#9A9A9A] text-sm">
+                    <p className="text-[#888] text-sm">
                       {variants.length} link{variants.length !== 1 ? 's' : ''} configured
                     </p>
                   </div>
-                  <span className="ml-auto text-[#9A9A9A] group-hover:text-[#00C853] transition-colors">→</span>
+                  <span className="ml-auto text-[#888] group-hover:text-[#00C853] group-hover:translate-x-1 transition-all">→</span>
                 </div>
               </Link>
 
               <Link
                 href="/dashboard/rules"
-                className="bg-[#111] rounded-xl border border-[#222] p-6 hover:border-[#00C853]/50 transition-all group"
+                className="group rounded-2xl p-6 transition-all duration-300 hover:translate-y-[-2px]"
+                style={{ background: 'linear-gradient(135deg, rgba(17,17,17,0.8), rgba(10,10,10,0.9))', border: '1px solid rgba(255,255,255,0.06)' }}
               >
                 <div className="flex items-center gap-4">
-                  <div className="text-4xl">⚙️</div>
+                  <div className="w-11 h-11 rounded-xl flex items-center justify-center" style={{ background: 'rgba(154,154,154,0.06)', border: '1px solid rgba(154,154,154,0.1)' }}><GearIcon size={22} color="#9A9A9A" /></div>
                   <div>
                     <h3 className="text-lg font-bold text-white group-hover:text-[#00C853] transition-colors">
                       Configure Rules
                     </h3>
-                    <p className="text-[#9A9A9A] text-sm">
+                    <p className="text-[#888] text-sm">
                       Set up targeting
                     </p>
                   </div>
-                  <span className="ml-auto text-[#9A9A9A] group-hover:text-[#00C853] transition-colors">→</span>
+                  <span className="ml-auto text-[#888] group-hover:text-[#00C853] group-hover:translate-x-1 transition-all">→</span>
                 </div>
               </Link>
 
               <Link
                 href={`/hub/${selectedHub.hub_id}/tools`}
-                className="bg-gradient-to-br from-[#1a1a2e] to-[#16213e] rounded-xl border border-[#4a4ae8]/30 p-6 hover:border-[#4a4ae8] transition-all group"
+                className="group rounded-2xl p-6 transition-all duration-300 hover:translate-y-[-2px]"
+                style={{ background: 'linear-gradient(135deg, rgba(26,26,46,0.8), rgba(22,33,62,0.7))', border: '1px solid rgba(74,74,232,0.15)' }}
               >
                 <div className="flex items-center gap-4">
-                  <div className="text-4xl">🛠️</div>
+                  <div className="w-11 h-11 rounded-xl flex items-center justify-center" style={{ background: 'rgba(74,74,232,0.08)', border: '1px solid rgba(74,74,232,0.15)' }}><WrenchIcon size={22} color="#7a7aff" /></div>
                   <div>
                     <h3 className="text-lg font-bold text-[#7a7aff] group-hover:text-[#9a9aff] transition-colors">
                       Tools
                     </h3>
-                    <p className="text-[#9A9A9A] text-sm">
+                    <p className="text-[#888] text-sm">
                       QR Code & Short URLs
                     </p>
                   </div>
-                  <span className="ml-auto text-[#7a7aff] group-hover:text-[#9a9aff] transition-colors">→</span>
+                  <span className="ml-auto text-[#7a7aff] group-hover:text-[#9a9aff] group-hover:translate-x-1 transition-all">→</span>
                 </div>
               </Link>
 
               <Link
                 href={`/analysis/${selectedHub.hub_id}`}
-                className="bg-gradient-to-br from-[#111] to-[#0a2010] rounded-xl border border-[#00C853]/30 p-6 hover:border-[#00C853] transition-all group"
+                className="group rounded-2xl p-6 transition-all duration-300 hover:translate-y-[-2px]"
+                style={{ background: 'linear-gradient(135deg, rgba(17,17,17,0.8), rgba(10,32,16,0.7))', border: '1px solid rgba(0,200,83,0.15)' }}
               >
                 <div className="flex items-center gap-4">
-                  <div className="text-4xl">📈</div>
+                  <div className="w-11 h-11 rounded-xl flex items-center justify-center" style={{ background: 'rgba(0,200,83,0.08)', border: '1px solid rgba(0,200,83,0.12)' }}><ChartIcon size={22} color="#00C853" /></div>
                   <div>
                     <h3 className="text-lg font-bold text-[#00C853] group-hover:text-[#00FF00] transition-colors">
                       Analytics
                     </h3>
-                    <p className="text-[#9A9A9A] text-sm">
+                    <p className="text-[#888] text-sm">
                       Charts & AI insights
                     </p>
                   </div>
-                  <span className="ml-auto text-[#00C853] group-hover:text-[#00FF00] transition-colors">→</span>
+                  <span className="ml-auto text-[#00C853] group-hover:text-[#00FF00] group-hover:translate-x-1 transition-all">→</span>
                 </div>
               </Link>
 
               <Link
                 href="/dashboard/engagement"
-                className="bg-[#111] rounded-xl border border-[#222] p-6 hover:border-yellow-500/50 transition-all group"
+                className="group rounded-2xl p-6 transition-all duration-300 hover:translate-y-[-2px]"
+                style={{ background: 'linear-gradient(135deg, rgba(17,17,17,0.8), rgba(10,10,10,0.9))', border: '1px solid rgba(255,255,255,0.06)' }}
               >
                 <div className="flex items-center gap-4">
-                  <div className="text-4xl">⏱️</div>
+                  <div className="w-11 h-11 rounded-xl flex items-center justify-center" style={{ background: 'rgba(234,179,8,0.06)', border: '1px solid rgba(234,179,8,0.1)' }}><ClockIcon size={22} color="#eab308" /></div>
                   <div>
                     <h3 className="text-lg font-bold text-white group-hover:text-yellow-500 transition-colors">
                       Engagement
                     </h3>
-                    <p className="text-[#9A9A9A] text-sm">
+                    <p className="text-[#888] text-sm">
                       Time & Attention
                     </p>
                   </div>
-                  <span className="ml-auto text-[#9A9A9A] group-hover:text-yellow-500 transition-colors">→</span>
+                  <span className="ml-auto text-[#888] group-hover:text-yellow-500 group-hover:translate-x-1 transition-all">→</span>
                 </div>
               </Link>
 
               <Link
                 href="/dashboard/referrals"
-                className="bg-[#111] rounded-xl border border-[#222] p-6 hover:border-blue-500/50 transition-all group"
+                className="group rounded-2xl p-6 transition-all duration-300 hover:translate-y-[-2px]"
+                style={{ background: 'linear-gradient(135deg, rgba(17,17,17,0.8), rgba(10,10,10,0.9))', border: '1px solid rgba(255,255,255,0.06)' }}
               >
                 <div className="flex items-center gap-4">
-                  <div className="text-4xl">🌍</div>
+                  <div className="w-11 h-11 rounded-xl flex items-center justify-center" style={{ background: 'rgba(59,130,246,0.06)', border: '1px solid rgba(59,130,246,0.1)' }}><GlobeIcon size={22} color="#3b82f6" /></div>
                   <div>
                     <h3 className="text-lg font-bold text-white group-hover:text-blue-500 transition-colors">
                       Sources
                     </h3>
-                    <p className="text-[#9A9A9A] text-sm">
+                    <p className="text-[#888] text-sm">
                       Traffic & Referrers
                     </p>
                   </div>
-                  <span className="ml-auto text-[#9A9A9A] group-hover:text-blue-500 transition-colors">→</span>
+                  <span className="ml-auto text-[#888] group-hover:text-blue-500 group-hover:translate-x-1 transition-all">→</span>
                 </div>
               </Link>
 
               <Link
                 href="/dashboard/conversions"
-                className="bg-[#111] rounded-xl border border-[#222] p-6 hover:border-purple-500/50 transition-all group"
+                className="group rounded-2xl p-6 transition-all duration-300 hover:translate-y-[-2px]"
+                style={{ background: 'linear-gradient(135deg, rgba(17,17,17,0.8), rgba(10,10,10,0.9))', border: '1px solid rgba(255,255,255,0.06)' }}
               >
                 <div className="flex items-center gap-4">
-                  <div className="text-4xl">💰</div>
+                  <div className="w-11 h-11 rounded-xl flex items-center justify-center" style={{ background: 'rgba(168,85,247,0.06)', border: '1px solid rgba(168,85,247,0.1)' }}><DollarIcon size={22} color="#a855f7" /></div>
                   <div>
                     <h3 className="text-lg font-bold text-white group-hover:text-purple-500 transition-colors">
                       Conversions
                     </h3>
-                    <p className="text-[#9A9A9A] text-sm">
+                    <p className="text-[#888] text-sm">
                       Revenue & ROI
                     </p>
                   </div>
-                  <span className="ml-auto text-[#9A9A9A] group-hover:text-purple-500 transition-colors">→</span>
+                  <span className="ml-auto text-[#888] group-hover:text-purple-500 group-hover:translate-x-1 transition-all">→</span>
                 </div>
               </Link>
             </div>
@@ -312,6 +364,15 @@ function DashboardContent() {
         onClose={() => setShowCreateHub(false)}
         onCreate={handleCreateHub}
       />
+
+      {selectedHub && (
+        <EditHubModal
+          hub={selectedHub}
+          isOpen={showEditHub}
+          onClose={() => setShowEditHub(false)}
+          onUpdate={handleUpdateHub}
+        />
+      )}
 
       {showOnboarding && <OnboardingModal onClose={() => setShowOnboarding(false)} />}
     </div>

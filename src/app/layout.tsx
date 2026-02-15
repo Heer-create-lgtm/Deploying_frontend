@@ -1,12 +1,15 @@
 import type { Metadata } from "next";
-import { Fira_Code } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/contexts/auth-context";
+import KeepAlive from "@/components/KeepAlive";
+import CursorGlow from "@/components/animations/CursorGlow";
+import ParticleField from "@/components/animations/ParticleField";
 
-const firaCode = Fira_Code({
-  variable: "--font-fira-code",
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  weight: ["400", "500", "600", "700", "800"],
 });
 
 export const metadata: Metadata = {
@@ -20,15 +23,19 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body
-        className={`${firaCode.variable} antialiased`}
+        suppressHydrationWarning
+        className={`${inter.variable} antialiased`}
         style={{
           background: '#000000',
-          color: '#00FF00',
-          fontFamily: "'Fira Code', 'Courier New', monospace",
+          color: '#E6E6E6',
+          fontFamily: "'Inter', system-ui, -apple-system, sans-serif",
         }}
       >
+        <CursorGlow />
+        <ParticleField count={40} />
+        <KeepAlive />
         <AuthProvider>
           {children}
         </AuthProvider>

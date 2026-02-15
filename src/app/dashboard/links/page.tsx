@@ -6,15 +6,16 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import DashboardNav from '@/components/DashboardNav';
 import type { LinkHub, Variant, VariantStats } from '@/types';
-import {
-  getHubs,
-  createHub,
-  getVariants,
+import { 
+  getHubs, 
+  createHub, 
+  getVariants, 
   createVariant,
   deleteVariant,
   getHubStats,
-  ApiError
+  ApiError 
 } from '@/lib/api-client';
 import { useAuth } from '@/contexts/auth-context';
 import ProtectedRoute from '@/components/ProtectedRoute';
@@ -33,26 +34,26 @@ export default function LinksPage() {
 
 function LinksContent() {
   const { user, logout } = useAuth();
-
+  
   // Hub state
   const [hubs, setHubs] = useState<LinkHub[]>([]);
   const [selectedHub, setSelectedHub] = useState<LinkHub | null>(null);
   const [isLoadingHubs, setIsLoadingHubs] = useState(true);
   const [showCreateHub, setShowCreateHub] = useState(false);
-
+  
   // Variant state
   const [variants, setVariants] = useState<Variant[]>([]);
   const [selectedVariant, setSelectedVariant] = useState<Variant | null>(null);
   const [isLoadingVariants, setIsLoadingVariants] = useState(false);
   const [isAddingVariant, setIsAddingVariant] = useState(false);
-
+  
   // Stats state
   const [variantStats, setVariantStats] = useState<VariantStats[]>([]);
-
+  
   // UI state
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-
+  
   const hasFetched = useRef(false);
 
   // Fetch hubs on mount
@@ -61,7 +62,7 @@ function LinksContent() {
     try {
       const hubList = await getHubs();
       setHubs(hubList);
-
+      
       // Auto-select first hub if available
       if (hubList.length > 0 && !selectedHub) {
         setSelectedHub(hubList[0]);
@@ -80,7 +81,7 @@ function LinksContent() {
     try {
       const variantList = await getVariants(hubId);
       setVariants(variantList);
-
+      
       // Also fetch stats
       const hubStats = await getHubStats(hubId);
       if (hubStats?.variants) {
@@ -118,7 +119,7 @@ function LinksContent() {
   // Variant handlers
   const handleAddVariant = async (input: Parameters<typeof createVariant>[1]) => {
     if (!selectedHub) return;
-
+    
     try {
       const newVariant = await createVariant(selectedHub.hub_id, input);
       setVariants([...variants, newVariant]);
@@ -132,7 +133,7 @@ function LinksContent() {
 
   const handleDeleteVariant = async (variantId: string) => {
     if (!selectedHub || !confirm('Delete this link variant?')) return;
-
+    
     try {
       await deleteVariant(selectedHub.hub_id, variantId);
       setVariants(variants.filter(v => v.variant_id !== variantId));
@@ -141,31 +142,34 @@ function LinksContent() {
       }
     } catch (err) {
       console.error('Failed to delete variant:', err);
+      const message = err instanceof ApiError ? err.message : 'Failed to delete variant';
+      setError(message);
     }
   };
 
   const handleVariantUpdate = (updatedVariant: Variant) => {
-    setVariants(variants.map(v =>
+    setVariants(variants.map(v => 
       v.variant_id === updatedVariant.variant_id ? updatedVariant : v
     ));
     setSelectedVariant(updatedVariant);
   };
 
   // Filter variants by search query
-  const filteredVariants = variants.filter(v =>
+  const filteredVariants = variants.filter(v => 
     v.variant_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
     v.target_url.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
     <div className="min-h-screen page-bg">
+      <DashboardNav />
       <div className="max-w-7xl mx-auto p-6 lg:p-8">
-
+        
         {/* Header */}
         <header className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-4">
             <h1 className="text-2xl font-bold text-white flex items-center gap-3">
-              <span className="text-3xl">🔗</span>
+              <span className="flex items-center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#00C853" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" /><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" /></svg></span>
               Link Manager
             </h1>
             <HubSelector
@@ -176,7 +180,7 @@ function LinksContent() {
               isLoading={isLoadingHubs}
             />
           </div>
-
+          
           <div className="flex items-center gap-4">
             {selectedHub && (
               <code className="text-[#00C853] bg-[#00C853]/10 px-3 py-2 rounded-lg border border-[#00C853]/20 text-sm">
@@ -207,7 +211,7 @@ function LinksContent() {
         {!isLoadingHubs && hubs.length === 0 && (
           <div className="text-center py-20">
             <div className="w-20 h-20 bg-[#111] rounded-2xl flex items-center justify-center mx-auto mb-6">
-              <span className="text-4xl">🔗</span>
+              <span className="flex items-center"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#00C853" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" /><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" /></svg></span>
             </div>
             <h2 className="text-2xl font-bold text-white mb-2">Create Your First Hub</h2>
             <p className="text-[#9A9A9A] mb-6 max-w-md mx-auto">
@@ -236,7 +240,7 @@ function LinksContent() {
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="input-field pl-10 w-64"
                   />
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9A9A9A]">🔍</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9A9A9A] flex items-center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg></span>
                 </div>
                 <span className="text-sm text-[#9A9A9A]">
                   {filteredVariants.length} link{filteredVariants.length !== 1 ? 's' : ''}
@@ -262,15 +266,15 @@ function LinksContent() {
                   isLoading={isLoadingVariants}
                   stats={variantStats}
                 />
-
+                
                 {!isLoadingVariants && filteredVariants.length === 0 && (
                   <div className="bg-[#111] rounded-xl border border-[#222] p-8 text-center">
-                    <div className="text-5xl mb-4 opacity-30">🔗</div>
+                    <div className="mb-4 opacity-30 flex justify-center"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" /><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" /></svg></div>
                     <h3 className="text-lg font-bold text-[#E6E6E6] mb-2">
                       {searchQuery ? 'No links found' : 'No links yet'}
                     </h3>
                     <p className="text-[#9A9A9A] text-sm mb-4">
-                      {searchQuery
+                      {searchQuery 
                         ? 'Try a different search term'
                         : 'Add your first link to get started'
                       }
@@ -305,7 +309,7 @@ function LinksContent() {
                   />
                 ) : (
                   <div className="bg-[#111] rounded-xl border border-[#222] p-8 text-center">
-                    <div className="text-5xl mb-4 opacity-30">✏️</div>
+                    <div className="mb-4 opacity-30 flex justify-center"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg></div>
                     <h3 className="text-lg font-bold text-[#E6E6E6] mb-2">
                       Select a link to edit
                     </h3>
@@ -339,7 +343,7 @@ function LinksContent() {
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-blue-400">
-                    {variantStats.reduce((sum, s) => sum + s.clicks, 0)}
+                    {variantStats.reduce((sum, s) => sum + (s.clicks || 0), 0)}
                   </p>
                   <p className="text-xs text-[#9A9A9A]">Total Clicks</p>
                 </div>

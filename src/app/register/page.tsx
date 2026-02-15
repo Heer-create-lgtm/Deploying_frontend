@@ -1,244 +1,309 @@
 // ============================================
 // SMART LINK HUB - Register Page
-// New user registration form
+// Split layout matching login, with password strength
 // ============================================
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/auth-context';
-import { ApiError } from '@/lib/api-client';
+import GradientMesh from '@/components/animations/GradientMesh';
+
+// ─── Password Strength Meter ───
+function PasswordStrength({ password }: { password: string }) {
+  const strength = useMemo(() => {
+    if (!password) return { score: 0, label: '', color: '' };
+    let score = 0;
+    if (password.length >= 8) score++;
+    if (password.length >= 12) score++;
+    if (/[A-Z]/.test(password)) score++;
+    if (/[0-9]/.test(password)) score++;
+    if (/[^A-Za-z0-9]/.test(password)) score++;
+
+    if (score <= 1) return { score: 1, label: 'Weak', color: '#ef4444' };
+    if (score <= 2) return { score: 2, label: 'Fair', color: '#f59e0b' };
+    if (score <= 3) return { score: 3, label: 'Good', color: '#eab308' };
+    if (score <= 4) return { score: 4, label: 'Strong', color: '#22c55e' };
+    return { score: 5, label: 'Very strong', color: '#00C853' };
+  }, [password]);
+
+  if (!password) return null;
+
+  return (
+    <div className="mt-2">
+      <div className="flex gap-1 mb-1">
+        {[1, 2, 3, 4, 5].map(i => (
+          <div
+            key={i}
+            className="h-1 flex-1 rounded-full transition-all duration-300"
+            style={{
+              background: i <= strength.score ? strength.color : '#222',
+            }}
+          />
+        ))}
+      </div>
+      <p className="text-xs transition-colors" style={{ color: strength.color }}>
+        {strength.label}
+      </p>
+    </div>
+  );
+}
 
 export default function RegisterPage() {
-  const router = useRouter();
-  const { register, isLoading } = useAuth();
-
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  const { register, isAuthenticated, isLoading } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => setMounted(true), []);
+
+  useEffect(() => {
+    if (!isLoading && isAuthenticated) {
+      router.push('/dashboard');
+    }
+  }, [isAuthenticated, isLoading, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // ... (rest of handleSubmit unchanged)
+    setError('');
 
-    // Password Field
-    <div className="mb-4">
-      <label htmlFor="password" className="block text-sm mb-2" style={{ color: 'var(--foreground-secondary)' }}>
-        Password
-      </label>
-      <div className="relative">
-        <input
-          id="password"
-          type={showPassword ? 'text' : 'password'}
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="input-field pr-10"
-          placeholder="••••••••"
-          required
-          autoComplete="new-password"
-          minLength={8}
-        />
-        <button
-          type="button"
-          onClick={() => setShowPassword(!showPassword)}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
-          aria-label={showPassword ? 'Hide password' : 'Show password'}
-        >
-          {showPassword ? (
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" />
-            </svg>
-          ) : (
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-            </svg>
-          )}
-        </button>
-      </div>
-      <p style={{ color: 'var(--foreground-muted)' }} className="text-xs mt-1">Minimum 8 characters</p>
-    </div>
-    setError(null);
-
-    // Validate password match
-    if (password !== confirmPassword) {
-      setError('Passwords do not match');
-      return;
-    }
-
-    // Validate password length
     if (password.length < 8) {
       setError('Password must be at least 8 characters');
       return;
     }
 
+    if (password !== confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
+    setIsSubmitting(true);
+
     try {
       await register({ email, password, name: name || undefined });
       router.push('/dashboard');
-    } catch (err) {
-      if (err instanceof ApiError) {
-        if (err.status === 409) {
-          setError('This email is already registered');
-        } else {
-          setError(err.message);
-        }
-      } else {
-        setError('An unexpected error occurred');
-      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Registration failed. Please try again.';
+      setError(message);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="w-12 h-12 border-4 border-[#00C853] border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: '#000000' }}>
-      <div className="w-full max-w-md">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <Link href="/" className="inline-block">
-            <h1 className="text-3xl font-bold">
-              <span style={{ color: 'var(--accent)' }}>Smart</span>
-              <span style={{ color: 'var(--foreground)' }}> Link Hub</span>
-            </h1>
-          </Link>
-          <p style={{ color: 'var(--foreground-secondary)' }} className="mt-2">Create your account to get started</p>
+    <main className="min-h-screen flex" style={{ background: '#000' }}>
+
+      {/* ─── Left Panel: Branding ─── */}
+      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden items-center justify-center">
+        <div className="absolute inset-0" style={{ background: 'linear-gradient(135deg, #000 0%, #021a0a 40%, #042b10 100%)' }} />
+
+        <GradientMesh intensity={0.1} />
+
+        <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.1) 1px, transparent 1px)', backgroundSize: '60px 60px' }} />
+
+        <div className="relative z-10 px-12 max-w-md">
+          <div className="flex items-center gap-2.5 mb-10">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'rgba(0,200,83,0.12)', border: '1px solid rgba(0,200,83,0.2)' }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#00C853" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+              </svg>
+            </div>
+            <span className="font-bold text-white text-xl tracking-tight">Smart Link Hub</span>
+          </div>
+
+          <h2 className="text-4xl font-bold text-white mb-4 leading-tight tracking-tight">
+            Start building
+            <br />
+            <span className="gradient-text">smarter links.</span>
+          </h2>
+          <p className="text-[#777] text-base leading-relaxed mb-10">
+            Join thousands of creators and marketers who use Smart Link Hub to maximize their link performance.
+          </p>
+
+          <div className="space-y-4">
+            {[
+              { icon: (<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00C853" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>), text: 'Set up in under 60 seconds' },
+              { icon: (<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00C853" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="2" y1="12" x2="22" y2="12" /><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" /></svg>), text: 'Device & geo-based routing' },
+              { icon: (<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00C853" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18" /><polyline points="17 6 23 6 23 12" /></svg>), text: 'AI-powered analytics' },
+            ].map(item => (
+              <div key={item.text} className="flex items-center gap-3 text-sm text-[#999]">
+                <span className="flex-shrink-0">{item.icon}</span>
+                {item.text}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ─── Right Panel: Form ─── */}
+      <div className="flex-1 flex items-center justify-center px-6 lg:px-16 relative">
+        <div className="absolute inset-0 pointer-events-none lg:hidden">
+          <div className="absolute top-0 right-[-20%] w-[400px] h-[400px] rounded-full opacity-[0.05]" style={{ background: 'radial-gradient(circle, #00C853 0%, transparent 70%)' }} />
         </div>
 
-        {/* Register Form */}
-        <form onSubmit={handleSubmit} className="panel p-8">
-          <h2 className="text-xl font-bold mb-6" style={{ color: 'var(--foreground)' }}>Create Account</h2>
-
-          {/* Error Message */}
-          {error && (
-            <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-sm">
-              {error}
-            </div>
-          )}
-
-          {/* Name Field */}
-          <div className="mb-4">
-            <label htmlFor="name" className="block text-sm mb-2" style={{ color: 'var(--foreground-secondary)' }}>
-              Name <span style={{ color: 'var(--foreground-muted)' }}>(optional)</span>
-            </label>
-            <input
-              id="name"
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="input-field"
-              placeholder="John Doe"
-              autoComplete="name"
-            />
+        <div
+          className={`relative z-10 w-full max-w-md transition-all duration-700 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}
+        >
+          {/* Mobile logo */}
+          <div className="text-center mb-8 lg:hidden">
+            <Link href="/" className="inline-flex items-center gap-2 mb-6 group">
+              <div className="w-9 h-9 rounded-lg flex items-center justify-center transition-all group-hover:scale-110" style={{ background: 'rgba(0,200,83,0.15)' }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#00C853" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+                </svg>
+              </div>
+              <span className="font-bold text-white text-lg">Smart Link Hub</span>
+            </Link>
           </div>
 
-          {/* Email Field */}
-          <div className="mb-4">
-            <label htmlFor="email" className="block text-sm mb-2" style={{ color: 'var(--foreground-secondary)' }}>
-              Email Address
-            </label>
-            <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="input-field"
-              placeholder="you@example.com"
-              required
-              autoComplete="email"
-            />
-          </div>
+          <Link href="/" className="hidden lg:inline-flex items-center gap-2 text-sm text-[#666] hover:text-white transition-colors mb-8">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
+            Back to home
+          </Link>
 
-          {/* Password Field */}
-          <div className="mb-4">
-            <label htmlFor="password" className="block text-sm mb-2" style={{ color: 'var(--foreground-secondary)' }}>
-              Password
-            </label>
-            <div className="relative">
-              <input
-                id="password"
-                type={showPassword ? 'text' : 'password'}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="input-field pr-10"
-                placeholder="••••••••"
-                required
-                autoComplete="new-password"
-                minLength={8}
-              />
+          <h1 className="text-3xl font-bold text-white mb-2 tracking-tight">Create your account</h1>
+          <p className="text-[#888] text-sm mb-8">Start building smarter links in seconds</p>
+
+          <div
+            className="rounded-2xl p-8"
+            style={{
+              background: 'linear-gradient(135deg, rgba(17,17,17,0.8) 0%, rgba(10,10,10,0.9) 100%)',
+              border: '1px solid rgba(255,255,255,0.06)',
+            }}
+          >
+            {error && (
+              <div className="mb-6 p-3.5 rounded-xl text-sm text-red-400 border border-red-500/20 flex items-center gap-2.5" style={{ background: 'rgba(239,68,68,0.06)' }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" /></svg>
+                {error}
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <div>
+                <label htmlFor="name" className="block text-sm font-medium text-[#888] mb-2">
+                  Name <span className="text-[#444]">(optional)</span>
+                </label>
+                <input
+                  id="name"
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Your name"
+                  autoComplete="name"
+                  className="input-field"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium text-[#888] mb-2">
+                  Email
+                </label>
+                <input
+                  id="email"
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@example.com"
+                  autoComplete="email"
+                  className="input-field"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="password" className="block text-sm font-medium text-[#888] mb-2">
+                  Password
+                </label>
+                <div className="relative">
+                  <input
+                    id="password"
+                    type={showPassword ? 'text' : 'password'}
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Min 8 characters"
+                    autoComplete="new-password"
+                    className="input-field pr-12"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#555] hover:text-white transition-colors p-1"
+                  >
+                    {showPassword ? (
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" /><line x1="1" y1="1" x2="23" y2="23" /></svg>
+                    ) : (
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
+                    )}
+                  </button>
+                </div>
+                <PasswordStrength password={password} />
+              </div>
+
+              <div>
+                <label htmlFor="confirmPassword" className="block text-sm font-medium text-[#888] mb-2">
+                  Confirm Password
+                </label>
+                <input
+                  id="confirmPassword"
+                  type="password"
+                  required
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Re-enter password"
+                  autoComplete="new-password"
+                  className="input-field"
+                />
+                {confirmPassword && password !== confirmPassword && (
+                  <p className="text-xs text-red-400 mt-1.5">Passwords don&apos;t match</p>
+                )}
+              </div>
+
               <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
-                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                type="submit"
+                disabled={isSubmitting}
+                className="btn btn-primary w-full py-3.5 text-base rounded-xl"
+                style={{ opacity: isSubmitting ? 0.7 : 1 }}
               >
-                {showPassword ? (
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" />
-                  </svg>
+                {isSubmitting ? (
+                  <span className="flex items-center gap-2">
+                    <span className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
+                    Creating account...
+                  </span>
                 ) : (
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-                  </svg>
+                  'Create Account'
                 )}
               </button>
+            </form>
+
+            <div className="mt-6 pt-6 text-center" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+              <p className="text-sm text-[#888]">
+                Already have an account?{' '}
+                <Link href="/login" className="text-[#00C853] hover:text-[#00E676] font-medium transition-colors">
+                  Sign in
+                </Link>
+              </p>
             </div>
-            <p style={{ color: 'var(--foreground-muted)' }} className="text-xs mt-1">Minimum 8 characters</p>
           </div>
-
-          {/* Confirm Password Field */}
-          <div className="mb-6">
-            <label htmlFor="confirmPassword" className="block text-sm mb-2" style={{ color: 'var(--foreground-secondary)' }}>
-              Confirm Password
-            </label>
-            <input
-              id="confirmPassword"
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              className="input-field"
-              placeholder="••••••••"
-              required
-              autoComplete="new-password"
-            />
-          </div>
-
-          {/* Submit Button */}
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="w-full btn btn-primary py-3 text-lg disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isLoading ? (
-              <span className="flex items-center justify-center gap-2">
-                <span className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin"></span>
-                Creating account...
-              </span>
-            ) : (
-              'Create Account'
-            )}
-          </button>
-
-          {/* Login Link */}
-          <p className="text-center mt-6" style={{ color: 'var(--foreground-secondary)' }}>
-            Already have an account?{' '}
-            <Link href="/login" style={{ color: 'var(--accent)' }} className="hover:underline">
-              Sign in
-            </Link>
-          </p>
-        </form>
-
-        {/* Back to Home */}
-        <p className="text-center mt-6">
-          <Link href="/" style={{ color: 'var(--foreground-secondary)' }} className="text-sm hover:opacity-80">
-            ← Back to home
-          </Link>
-        </p>
+        </div>
       </div>
-    </div>
+    </main>
   );
 }
-

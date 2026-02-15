@@ -1,21 +1,21 @@
 // ============================================
-// SMART LINK HUB - Create Hub Modal
-// Modal for creating a new link hub
+// SMART LINK HUB - Edit Hub Modal
+// Modal for editing an existing link hub
 // ============================================
 
 'use client';
 
-import { useState } from 'react';
-import type { CreateHubInput } from '@/types';
+import { useState, useEffect } from 'react';
+import type { LinkHub, UpdateHubInput } from '@/types';
 
-interface CreateHubModalProps {
+interface EditHubModalProps {
+  hub: LinkHub;
   isOpen: boolean;
   onClose: () => void;
-  onCreate: (input: CreateHubInput) => Promise<void>;
+  onUpdate: (hubId: string, input: UpdateHubInput) => Promise<void>;
 }
 
-export default function CreateHubModal({ isOpen, onClose, onCreate }: CreateHubModalProps) {
-  const [hubId, setHubId] = useState('');
+export default function EditHubModal({ hub, isOpen, onClose, onUpdate }: EditHubModalProps) {
   const [slug, setSlug] = useState('');
   const [defaultUrl, setDefaultUrl] = useState('');
   const [bgColor, setBgColor] = useState('#1a1a2e');
@@ -23,20 +23,26 @@ export default function CreateHubModal({ isOpen, onClose, onCreate }: CreateHubM
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Auto-generate hub_id from slug
+  // Pre-fill form with hub data
+  useEffect(() => {
+    if (isOpen && hub) {
+      setSlug(hub.slug);
+      setDefaultUrl(hub.default_url);
+      setBgColor(hub.theme?.bg || '#1a1a2e');
+      setAccentColor(hub.theme?.accent || '#00C853');
+    }
+  }, [isOpen, hub]);
+
   const handleSlugChange = (value: string) => {
     const cleanSlug = value.toLowerCase().replace(/[^a-z0-9-]/g, '-');
     setSlug(cleanSlug);
-    if (!hubId || hubId === slug.replace(/-/g, '_')) {
-      setHubId(cleanSlug.replace(/-/g, '_'));
-    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
-    if (!hubId || !slug || !defaultUrl) {
+    if (!slug || !defaultUrl) {
       setError('All fields are required');
       return;
     }
@@ -52,8 +58,7 @@ export default function CreateHubModal({ isOpen, onClose, onCreate }: CreateHubM
     setIsSubmitting(true);
 
     try {
-      await onCreate({
-        hub_id: hubId,
+      await onUpdate(hub.hub_id, {
         slug,
         default_url: defaultUrl.startsWith('http') ? defaultUrl : `https://${defaultUrl}`,
         theme: {
@@ -62,15 +67,9 @@ export default function CreateHubModal({ isOpen, onClose, onCreate }: CreateHubM
         },
       });
       
-      // Reset form
-      setHubId('');
-      setSlug('');
-      setDefaultUrl('');
-      setBgColor('#1a1a2e');
-      setAccentColor('#00C853');
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create hub');
+      setError(err instanceof Error ? err.message : 'Failed to update hub');
     } finally {
       setIsSubmitting(false);
     }
@@ -90,7 +89,7 @@ export default function CreateHubModal({ isOpen, onClose, onCreate }: CreateHubM
       <div className="relative bg-[#111] border border-[#333] rounded-2xl w-full max-w-md m-4 shadow-2xl">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-[#222]">
-          <h2 className="text-xl font-bold text-white">Create New Hub</h2>
+          <h2 className="text-xl font-bold text-white">Edit Hub Settings</h2>
           <button
             onClick={onClose}
             className="text-[#666] hover:text-white transition-colors"
@@ -109,6 +108,19 @@ export default function CreateHubModal({ isOpen, onClose, onCreate }: CreateHubM
             </div>
           )}
 
+          {/* Hub ID (Read only) */}
+           <div>
+            <label className="block text-[#9A9A9A] text-sm mb-2">
+              Hub ID <span className="text-[#666]">(Cannot be changed)</span>
+            </label>
+            <input
+              type="text"
+              value={hub.hub_id}
+              disabled
+              className="input-field opacity-50 cursor-not-allowed"
+            />
+          </div>
+
           {/* Slug */}
           <div>
             <label className="block text-[#9A9A9A] text-sm mb-2">
@@ -123,29 +135,14 @@ export default function CreateHubModal({ isOpen, onClose, onCreate }: CreateHubM
               required
             />
             <p className="text-[#666] text-xs mt-1">
-              Your hub will be at: /{slug || 'your-slug'}
+              Your hub is at: /{slug}
             </p>
-          </div>
-
-          {/* Hub ID */}
-          <div>
-            <label className="block text-[#9A9A9A] text-sm mb-2">
-              Hub ID <span className="text-[#666]">(unique identifier)</span>
-            </label>
-            <input
-              type="text"
-              value={hubId}
-              onChange={(e) => setHubId(e.target.value.replace(/[^a-zA-Z0-9_-]/g, ''))}
-              className="input-field"
-              placeholder="my_awesome_hub"
-              required
-            />
           </div>
 
           {/* Default URL */}
           <div>
             <label className="block text-[#9A9A9A] text-sm mb-2">
-              Default URL <span className="text-[#666]">(fallback when no rules match)</span>
+              Default URL <span className="text-[#666]">(Fallback when no rules match)</span>
             </label>
             <input
               type="url"
@@ -234,7 +231,7 @@ export default function CreateHubModal({ isOpen, onClose, onCreate }: CreateHubM
               disabled={isSubmitting}
               className="flex-1 btn btn-primary py-3 disabled:opacity-50"
             >
-              {isSubmitting ? 'Creating...' : 'Create Hub'}
+              {isSubmitting ? 'Saving...' : 'Save Changes'}
             </button>
           </div>
         </form>
