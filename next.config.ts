@@ -1,12 +1,9 @@
 import type { NextConfig } from "next";
-import path from "path";
 
 const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 const nextConfig: NextConfig = {
-  turbopack: {
-    root: path.resolve(__dirname, '../../'),
-  },
+  transpilePackages: ['recharts', 'react-leaflet'],
   async rewrites() {
     return [
       {
@@ -22,5 +19,3 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
-
-
